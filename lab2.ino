@@ -29,25 +29,37 @@ pinMode(col4,OUTPUT);
 pinMode(col5,OUTPUT);
 }
 
-void number1() {
-    // take the latchPin low so 
-    // the LEDs don't change while you're sending in bits:
-    digitalWrite(col1,col_off);
-    digitalWrite(col2,col_off);
-    digitalWrite(col3,col_off);
-    digitalWrite(col4,col_on);
-    digitalWrite(col5,col_off);
-    digitalWrite(outputen, HIGH);
-    digitalWrite(strobepin, LOW);
-    // shift out the bits:
-    shiftOut(datapin, clockpin, MSBFIRST, 255);  
-    //take the latch pin high so the LEDs will light up:
-    digitalWrite(strobepin, HIGH);
-    // pause before next value:
+void columnsOFF() {
+//turn off all columns
+    for (int x = 0; x<5;x++){
+    digitalWrite(columns[x],col_off);
+    }
+    delay(1000);
 }
 
 
 void loop() {
+    columnsOFF();
+// shift out the bits, take the latch pin high so the LEDs will light up, pause before next value:
+//1
+    digitalWrite(columns[3],col_on);
+    digitalWrite(strobepin, LOW);
+    shiftOut(datapin, clockpin, MSBFIRST, 0xFF);  
+    digitalWrite(strobepin, HIGH);
+    delay(1000);
+    columnsOFF();
+//4
+    for (int x = 0; x < 5; x++){
+        for(int y = 0; y <5; y++ ){
 
-number1();
+        digitalWrite(columns[x],col_on);
+        if (x!=y) {
+        digitalWrite(columns[y],col_on);          
+        }    
+        digitalWrite(strobepin, LOW);
+        shiftOut(datapin, clockpin, MSBFIRST, 0x0F);  
+        digitalWrite(strobepin, HIGH);
+        delay(50);  
+      }    
+    }
 }
