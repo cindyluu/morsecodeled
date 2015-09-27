@@ -1,13 +1,18 @@
+#include <assert.h>
+
 // on off definition
 #define COL_OFF HIGH
-#define COL_ON LOW
+#define COL_ON  LOW
+#define ON      true
+#define OFF     false
 
 //strobe, clock, data, output enable pins
 int BUTTON_PIN = 2;
 int STROBE_PIN = 3;
 int DATA_PIN = 4;
 int CLOCK_PIN = 5;
-int OUTPUT_ENABLE_PIN = 6;
+
+int test_digit = 0;
 
 //column pins
 int COLUMN_1_PIN = 9;
@@ -24,10 +29,8 @@ int COLUMN_PINS[5] = {
 };
 
 // Digit map contains an array item for each digit
-// Each digit in the outer array contains a value 
-// representing the rows, stored as an 8-bit value 
-// (1 bit per row),
-// array of rows that should be illuminated for each
+// Each digit in the outer array contains a value
+// representing the rows, stored as an 8-bit value.
 int DIGIT_MAP[10][5] = {
     {0x00, 0x7F, 0x41, 0x41, 0x7F}, // 0
     {0x00, 0x00, 0x21, 0xFF, 0x01}, // 1
@@ -46,7 +49,6 @@ void setup() {
     pinMode(DATA_PIN,OUTPUT);
     pinMode(STROBE_PIN,OUTPUT);
     pinMode(CLOCK_PIN,OUTPUT);
-    pinMode(OUTPUT_ENABLE_PIN,OUTPUT);
 
     pinMode(COLUMN_1_PIN,OUTPUT);
     pinMode(COLUMN_2_PIN,OUTPUT);
@@ -55,72 +57,42 @@ void setup() {
     pinMode(COLUMN_5_PIN,OUTPUT);
 }
 
-void columnsOFF() {
+void toggle_columns(bool on) {
     //turn off all columns
-    for(int x = 0; x<5;x++) {
-        digitalWrite(COLUMN_PINS[x],COL_OFF);
+    int col;
+    for(col=0; col<5; col++) {
+        if (on) {
+            digitalWrite(COLUMN_PINS[col], COL_ON);
+        } else {
+            digitalWrite(COLUMN_PINS[col], COL_OFF);
+        }
     }
 }
 
-void display_one() {
-    columnsOFF();
-
-    digitalWrite(OUTPUT_ENABLE_PIN, LOW);
-
+void switch_rows(int row_map) {
+    digitalWrite(CLOCK_PIN, HIGH);
     digitalWrite(STROBE_PIN, LOW);
 
-    // Send data to the shift register
-    digitalWrite(COLUMN_2_PIN, COL_ON);
-    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0x0F);
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, row_map);
 
-    digitalWrite(STROBE_PIN, LOW);
+    digitalWrite(CLOCK_PIN, LOW);
     digitalWrite(STROBE_PIN, HIGH);
-    digitalWrite(OUTPUT_ENABLE_PIN,HIGH);
+    delay(1);
+}
+
+void display_digit(int digit) {
+    assert(digit < 10 && digit > -1);
+
+    int col;
+    for (col=0; col<=5; col++) {
+        switch_rows(DIGIT_MAP[digit][col]);
+        digitalWrite(COLUMN_PINS[col], COL_ON);
+        delay(10);
+        digitalWrite(COLUMN_PINS[col], COL_OFF);
+    }
 }
 
 void loop() {
-    display_one();
-    delay(1000);
-    columnsOFF();
-    delay(1000);
+    display_digit(4);
+    // delay(100);
 }
-
-
-// digitalWrite(OUTPUT_ENABLE_PIN,LOW);
-
-    // // shift out the bits, take the latch pin high so the LEDs will light up, pause before next value:
-    // //1
-    // digitalWrite(OUTPUT_ENABLE_PIN,HIGH);
-    // digitalWrite(COLUMN_PINS[3],COL_ON);
-    // digitalWrite(STROBE_PIN, LOW);
-    // shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0x4F);
-    // digitalWrite(STROBE_PIN, HIGH);
-    // delay(1000);
-//2
-//    columnsOFF();
-//    digitalWrite(COLUMN_PINS[0],COL_ON);
-//    digitalWrite(COLUMN_PINS[1],COL_ON);
-//    digitalWrite(COLUMN_PINS[2],COL_ON);
-//    digitalWrite(COLUMN_PINS[3],COL_ON);
-//    digitalWrite(COLUMN_PINS[4],COL_ON);
-//    digitalWrite(STROBE_PIN, LOW);
-//    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 0x4F);
-//    digitalWrite(STROBE_PIN, HIGH);
-//    delay(500);
-
-
-//4
-//    columnsOFF();
-//    for (int x = 0; x < 5; x++){
-//        for(int y = 0; y <5; y++ ){
-//        digitalWrite(COLUMN_PINS[x],COL_ON);
-//        if (x!=y) {
-//        digitalWrite(COLUMN_PINS[y],COL_OFF);
-//    , }
-//        digitalWrite(STROBE_PIN, LOW);
-//        shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, 154);
-//        delay(1);
-//        digitalWrite(STROBE_PIN, HIGH);
-//        delay(50);
-//  , }
-//, }
