@@ -1,8 +1,6 @@
 #include <assert.h>
 
 // on off definition
-#define COL_OFF HIGH
-#define COL_ON  LOW
 #define ON      true
 #define OFF     false
 
@@ -55,44 +53,46 @@ void setup() {
     pinMode(COLUMN_3_PIN,OUTPUT);
     pinMode(COLUMN_4_PIN,OUTPUT);
     pinMode(COLUMN_5_PIN,OUTPUT);
-}
 
-void toggle_columns(bool on) {
-    //turn off all columns
-    int col;
-    for(col=0; col<5; col++) {
-        if (on) {
-            digitalWrite(COLUMN_PINS[col], COL_ON);
-        } else {
-            digitalWrite(COLUMN_PINS[col], COL_OFF);
-        }
-    }
-}
-
-void switch_rows(int row_map) {
     digitalWrite(CLOCK_PIN, HIGH);
+    toggle_columns(OFF);
+    delay(100);
+}
+
+//turn off all columns
+void toggle_columns(bool on) {
+    int val;
+    val = on ? LOW : HIGH;
+    digitalWrite(COLUMN_PINS[0], val);
+    digitalWrite(COLUMN_PINS[1], val);
+    digitalWrite(COLUMN_PINS[2], val);
+    digitalWrite(COLUMN_PINS[3], val);
+    digitalWrite(COLUMN_PINS[4], val);
+}
+
+void toggle_rows(int row_map) {
     digitalWrite(STROBE_PIN, LOW);
 
+    delay(4);
     shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, row_map);
 
-    digitalWrite(CLOCK_PIN, LOW);
     digitalWrite(STROBE_PIN, HIGH);
-    delay(1);
 }
 
 void display_digit(int digit) {
     assert(digit < 10 && digit > -1);
 
     int col;
-    for (col=0; col<=5; col++) {
-        switch_rows(DIGIT_MAP[digit][col]);
-        digitalWrite(COLUMN_PINS[col], COL_ON);
-        delay(10);
-        digitalWrite(COLUMN_PINS[col], COL_OFF);
+    for (col=0; col<5; col++) {
+        toggle_rows(DIGIT_MAP[digit][col]);
+        toggle_columns(OFF);
+        digitalWrite(COLUMN_PINS[col], LOW);
     }
 }
 
+int count = 0;
 void loop() {
-    display_digit(4);
-    // delay(100);
+    display_digit(count / 50);
+    count++;
+    count = count % 500;
 }
