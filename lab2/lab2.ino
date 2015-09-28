@@ -1,5 +1,3 @@
-#include <assert.h>
-
 // Utility constants
 const bool ON = true;
 const bool OFF = false;
@@ -58,16 +56,20 @@ const int DIGIT_MAP[10][5] = {
 };
 
 // Runtime globals
-int click_state;
-int last_click_state = RELEASED;
-unsigned long last_debounce_time = 0;   // the last time the output pin was toggled
 const unsigned long debounce_delay = 5; // the debounce time; increase if the output flickers
-const unsigned long dot_duration = 150; // the length of a dot
-int digit = -1;
-int morse_code[5];
-int morse_code_index = 0;
+const unsigned long dot_duration = 150; // the maximum length of a dot (ms)
 
+int click_state;                        // state of the push button
+int last_click_state = RELEASED;
+unsigned long click_start;              // millis value when the button click began
+unsigned long last_debounce_time = 0;   // the last time the output pin was toggled
+int digit = -1;                         // the digit to display on the dot matrix
+int morse_code[5];                      // the current sequence of dots/dashes
+int morse_code_index = 0;               // the current position in the morse_code array
 
+/**
+ * Toggle all columns on (LOW) or off.
+ */
 void toggle_columns(bool on) {
     int state;
     state = on ? LOW : HIGH;
@@ -78,6 +80,11 @@ void toggle_columns(bool on) {
     digitalWrite(COLUMN_PINS[4], state);
 }
 
+/**
+ * Switch on (HIGH) rows by sending a 8-bit value to the shift register. 7 of
+ * these 8 bits control 1 of 7 rows of the LED dot matrix display. A 1 bit turns
+ * the corresponding row ON, while a 0 bit turns the row off.
+ */
 void toggle_rows(int row_map) {
     digitalWrite(STROBE_PIN, LOW);
 
@@ -87,14 +94,16 @@ void toggle_rows(int row_map) {
     digitalWrite(STROBE_PIN, HIGH);
 }
 
+/**
+ * Switches on (LOW) each column and its corresponding rows for the given digit
+ * in sequence. Only 1 column is powered at a time.
+ *
+ *  Note: To light a given row and column, the row is set to HIGH, while the
+ *  column is set to LOW. This allows current to flow through the given LED
+ *  dot at the intersection.
+ */
 void display_digit(int digit) {
-    if (digit > -1) {
-        // if (digit > 9 || digit < 0) {
-        //     Serial.print("Digit: ");
-        //     Serial.println(digit);
-        // }
-        assert(digit < 10 && digit > -1);
-
+    if (digit > -1 && digit < 10) {
         int col;
         for (col=0; col<5; col++) {
             toggle_rows(DIGIT_MAP[digit][col]);
@@ -104,6 +113,7 @@ void display_digit(int digit) {
     }
 }
 
+// Utility function to print the current state of morse_code
 void print_code_status() {
     Serial.print("Button state changed to ");
     Serial.println(click_state == CLICKED ? "CLICKED " : "RELEASED");
@@ -121,19 +131,28 @@ void print_code_status() {
     Serial.println("]");
 }
 
+/**
+ * Converts the morse_code array of dots (1) and dashes (0) to an integer from
+ * 0 to 10.
+ */
 int parse_morse_code(int code[5]) {
     int dot_sum = code[0] + code[1] + code[2] + code[3] + code[4];
     int result = code[0] == DOT ? dot_sum : (10 - dot_sum);
     return result % 10;
 }
 
+/**
+ * Adds a dot or dash to the morse_code global array, based on click_duration.
+ *
+ * When the array is filled, this function returns the new digit represented by
+ * the morse_code array. Otherwise, this returns the original digit.
+ *
+ */
 int update_code_sequence(int digit, int new_state, unsigned long click_duration) {
     if (click_duration <= dot_duration) {
         morse_code[morse_code_index] = DOT;
-        Serial.println("DOT");
     } else {
         morse_code[morse_code_index] = DASH;
-        Serial.println("DASH");
     }
 
     if (++morse_code_index > 4) {
@@ -161,14 +180,12 @@ void setup() {
     delay(100);
 }
 
-int reading;
-unsigned long current_time;
-unsigned long click_start;
-
+/**
+ * Check and handle input from the button, and display the digit global
+ */
 void loop() {
-    // https://www.arduino.cc/en/Tutorial/Debounce
-    reading = digitalRead(BUTTON_PIN);
-    current_time = millis();
+    int reading = digitalRead(BUTTON_PIN);
+    int current_time = millis();
 
     if (reading != last_click_state) {
         last_debounce_time = millis();
