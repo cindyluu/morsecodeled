@@ -1,18 +1,18 @@
 #include <assert.h>
 
-#define ON          true
-#define OFF         false
-#define CLICKED     HIGH
-#define RELEASED    LOW
-#define DOT         1
-#define DASH        0
+// Utility constants
+const bool ON = true;
+const bool OFF = false;
+const int CLICKED = HIGH;
+const int RELEASED = LOW;
+const int DOT = 1;
+const int DASH = 0;
 
-//strobe, clock, data, output enable pins
+// Pin constants
 const int BUTTON_PIN = 2;
 const int STROBE_PIN = 3;
 const int DATA_PIN = 4;
 const int CLOCK_PIN = 5;
-
 const int COLUMN_1_PIN = 9;
 const int COLUMN_2_PIN = 10;
 const int COLUMN_3_PIN = 11;
@@ -26,20 +26,35 @@ const int COLUMN_PINS[5] = {
     COLUMN_5_PIN
 };
 
-// Digit map contains an array item for each digit
-// Each digit in the outer array contains a value
-// representing the rows, stored as an 8-bit value.
+// Digit map contains an array for each digit, 0-9. Each digit map value is
+// an array itself. Each of these digit arrays include 5 values, 1 for each
+// column of the LED dot matrix display (i.e., columns 1-5). The values for each
+// columns of a digit represent the rows on that column that should be lit.
+//
+// For example, the digit 0 is stored as follows:
+//
+//  80 FF C1 C1 FF
+//  1  1  1  1  1 (ignored/unconnected)
+//  0  1  1  1  1
+//  0  1  0  0  1
+//  0  1  0  0  1
+//  0  1  0  0  1
+//  0  1  0  0  1
+//  0  1  1  1  1
+//
+// Note: the most significant bit is ignored on the dot matrix display
+//
 const int DIGIT_MAP[10][5] = {
-    {0x00, 0x7F, 0x41, 0x41, 0x7F}, // 0
-    {0x00, 0x00, 0x21, 0xFF, 0x01}, // 1
-    {0x00, 0xCF, 0xC9, 0xC9, 0xF9}, // 2
-    {0x00, 0xC1, 0xC9, 0xC9, 0xFF}, // 3
-    {0x00, 0xF8, 0x08, 0x08, 0xFF}, // 4
-    {0x00, 0xF9, 0xC9, 0xC9, 0xCF}, // 5
-    {0x00, 0xFF, 0xC9, 0xC9, 0xCF}, // 6
-    {0x00, 0xE0, 0xC0, 0xC0, 0xFF}, // 7
-    {0x00, 0xFF, 0xC9, 0xC9, 0xFF}, // 8
-    {0x00, 0xF9, 0xC9, 0xC9, 0xFF}  // 9
+    {0x80, 0xFF, 0xC1, 0xC1, 0xFF}, // 0
+    {0x80, 0x80, 0xA1, 0xFF, 0x81}, // 1
+    {0x80, 0xCF, 0xC9, 0xC9, 0xF9}, // 2
+    {0x80, 0xC1, 0xC9, 0xC9, 0xFF}, // 3
+    {0x80, 0xF8, 0x88, 0x88, 0xFF}, // 4
+    {0x80, 0xF9, 0xC9, 0xC9, 0xCF}, // 5
+    {0x80, 0xFF, 0xC9, 0xC9, 0xCF}, // 6
+    {0x80, 0xE0, 0xC0, 0xC0, 0xFF}, // 7
+    {0x80, 0xFF, 0xC9, 0xC9, 0xFF}, // 8
+    {0x80, 0xF9, 0xC9, 0xC9, 0xFF}  // 9
 };
 
 // Runtime globals
@@ -74,6 +89,10 @@ void toggle_rows(int row_map) {
 
 void display_digit(int digit) {
     if (digit > -1) {
+        // if (digit > 9 || digit < 0) {
+        //     Serial.print("Digit: ");
+        //     Serial.println(digit);
+        // }
         assert(digit < 10 && digit > -1);
 
         int col;
@@ -83,24 +102,6 @@ void display_digit(int digit) {
             digitalWrite(COLUMN_PINS[col], LOW);
         }
     }
-}
-
-void setup() {
-    Serial.begin(9600);
-
-    pinMode(BUTTON_PIN, INPUT);
-    pinMode(DATA_PIN, OUTPUT);
-    pinMode(STROBE_PIN, OUTPUT);
-    pinMode(CLOCK_PIN, OUTPUT);
-    pinMode(COLUMN_1_PIN, OUTPUT);
-    pinMode(COLUMN_2_PIN, OUTPUT);
-    pinMode(COLUMN_3_PIN, OUTPUT);
-    pinMode(COLUMN_4_PIN, OUTPUT);
-    pinMode(COLUMN_5_PIN, OUTPUT);
-
-    digitalWrite(CLOCK_PIN, HIGH);
-    toggle_columns(OFF);
-    delay(100);
 }
 
 void print_code_status() {
@@ -121,16 +122,12 @@ void print_code_status() {
 }
 
 int parse_morse_code(int code[5]) {
-    int dash_sum = code[0] + code[1] + code[2] + code[3] + code[4];
-    Serial.print("Dash sum: ");
-    Serial.println(dash_sum);
-
-    return code[0] == DOT ? dash_sum : (10 - dash_sum);
+    int dot_sum = code[0] + code[1] + code[2] + code[3] + code[4];
+    int result = code[0] == DOT ? dot_sum : (10 - dot_sum);
+    return result % 10;
 }
 
 int update_code_sequence(int digit, int new_state, unsigned long click_duration) {
-    Serial.print("Click duration: ");
-    Serial.println(click_duration);
     if (click_duration <= dot_duration) {
         morse_code[morse_code_index] = DOT;
         Serial.println("DOT");
@@ -144,6 +141,24 @@ int update_code_sequence(int digit, int new_state, unsigned long click_duration)
         return parse_morse_code(morse_code);
     }
     return digit;
+}
+
+void setup() {
+    Serial.begin(9600);
+
+    pinMode(BUTTON_PIN, INPUT);
+    pinMode(DATA_PIN, OUTPUT);
+    pinMode(STROBE_PIN, OUTPUT);
+    pinMode(CLOCK_PIN, OUTPUT);
+    pinMode(COLUMN_1_PIN, OUTPUT);
+    pinMode(COLUMN_2_PIN, OUTPUT);
+    pinMode(COLUMN_3_PIN, OUTPUT);
+    pinMode(COLUMN_4_PIN, OUTPUT);
+    pinMode(COLUMN_5_PIN, OUTPUT);
+
+    digitalWrite(CLOCK_PIN, HIGH);
+    toggle_columns(OFF);
+    delay(100);
 }
 
 int reading;
@@ -160,7 +175,7 @@ void loop() {
     }
 
     if ((current_time - last_debounce_time) > debounce_delay) {
-        // Real state change
+        // State is really changing here
 
         if (reading != click_state) {
             click_state = reading;
@@ -170,11 +185,8 @@ void loop() {
             } else {
                 click_start = last_debounce_time;
             }
-
-            print_code_status();
-
+            // print_code_status();
         }
-
     }
 
     last_click_state = reading;
