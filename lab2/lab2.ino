@@ -148,11 +148,15 @@ int parse_morse_code(int code[5]) {
  * the morse_code array. Otherwise, this returns the original digit.
  *
  */
-int update_code_sequence(int digit, int new_state, unsigned long click_duration) {
+int update_code_sequence(int digit, unsigned long click_duration) {
+  // Serial.print("Click duration: ");
+  // Serial.println(click_duration);
     if (click_duration <= dot_duration) {
         morse_code[morse_code_index] = DOT;
+        // Serial.println("DOT");
     } else {
         morse_code[morse_code_index] = DASH;
+        // Serial.println("DASH");
     }
 
     if (++morse_code_index > 4) {
@@ -185,7 +189,7 @@ void setup() {
  */
 void loop() {
     int reading = digitalRead(BUTTON_PIN);
-    int current_time = millis();
+    unsigned long current_time = millis();
 
     if (reading != last_click_state) {
         last_debounce_time = millis();
@@ -198,7 +202,7 @@ void loop() {
             click_state = reading;
 
             if (click_state == RELEASED) {
-                digit = update_code_sequence(digit, click_state, current_time - click_start);
+                digit = update_code_sequence(digit, current_time - click_start);
             } else {
                 click_start = last_debounce_time;
             }
