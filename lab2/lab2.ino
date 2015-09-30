@@ -133,7 +133,7 @@ void print_code_status() {
 
 /**
  * Converts the morse_code array of dots (1) and dashes (0) to an integer from
- * 0 to 10.
+ * 0 to 9.
  */
 int parse_morse_code(int code[5]) {
     int dot_sum = code[0] + code[1] + code[2] + code[3] + code[4];
